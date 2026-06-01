@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终极可拖拽互动小说编辑器 v2.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #4CAF50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --light: #f5f7fa;
+            --dark: #2c3e50;
+            --border: #e1e8ed;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: var(--dark);
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            background: white;
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary);
+            position: absolute;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            height: 60px;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .novel-input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 0.9em;
+            width: 200px;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 主容器 */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            margin-top: 60px;
+            gap: 0;
+        }
+
+        /* 左侧边栏 */
+        #tree {
+            width: 30%;
+            min-width: 250px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid var(--border);
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--light);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 3px solid var(--primary);
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        select, .input-group input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 0.9em;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        select:focus, .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        .input-group input {
+            flex: 1;
+            margin: 0;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        /* 分支树 */
+        #branchesTree {
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 15px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        .branch-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 5px;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .branch {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 5px;
+            background: #f9f9f9;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .branch:hover {
+            background: #f0f5ff;
+            border-left-color: var(--primary);
+            transform: translateX(2px);
+        }
+
+        .branch.active {
+            background: #e8f0ff;
+            border-left-color: var(--secondary);
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .toggle-btn {
+            cursor: pointer;
+            width: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: var(--primary);
+            user-select: none;
+        }
+
+        .branch-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.9em;
+        }
+
+        .branch-actions {
+            display: none;
+            gap: 4px;
+        }
+
+        .branch-item:hover .branch-actions {
+            display: flex;
+        }
+
+        .tag {
+            background: linear-gradient(135deg, #ffeb3b, #ffc107);
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 500;
+        }
+
+        /* 右侧内容区域 */
+        #content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .content-header h2 {
+            color: var(--dark);
+            font-size: 1.3em;
+        }
+
+        .content-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 0.95em;
+            color: #999;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+
+        #story {
+            flex: 1;
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid var(--border);
+            line-height: 1.6;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .content-tab {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .content-tab.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            color: var(--primary);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* 通知 */
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+            color: var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .notification.info {
+            border-left: 4px solid var(--primary);
+            color: var(--primary);
+        }
+
+        /* 快捷键提示 */
+        .shortcuts-info {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .shortcut-key {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* 版本历史 */
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            background: var(--light);
+            border-color: var(--primary);
+        }
+
+        .history-time {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1024px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            #tree {
+                width: 100%;
+                border-right: none;
+                border-bottom: 2px solid var(--border);
+                max-height: 200px;
+            }
+
+            #content {
+                flex: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                height: auto;
+                gap: 10px;
+                padding: 10px;
+            }
+
+            .navbar-left, .navbar-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .novel-input {
+                width: 100%;
+            }
+
+            #tree {
+                display: none;
+            }
+
+            #content {
+                padding: 10px;
+            }
+
+            #story {
+                padding: 15px;
+            }
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--light);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <div class="navbar">
+        <div class="navbar-left">
+            <span class="navbar-title">📖 互动小说编辑器 v2.0</span>
+            <input type="text" id="novelTitle" class="novel-input" placeholder="小说标题" value="星际探险">
+        </div>
+        <div class="navbar-right">
+            <button class="btn btn-secondary btn-sm" onclick="openModal('shortcuts')"><i class="fas fa-keyboard"></i> 快捷键</button>
+            <button class="btn btn-secondary btn-sm" onclick="openModal('history')"><i class="fas fa-history"></i> 历史</button>
+            <button class="btn btn-secondary btn-sm" onclick="showStats()"><i class="fas fa-chart-bar"></i> 统计</button>
+        </div>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="app-container">
+        <!-- 左侧边栏 -->
+        <div id="tree">
+            <!-- 统计信息 -->
+            <div class="sidebar-section">
+                <div class="sidebar-title"><i class="fas fa-chart-pie"></i> 统计信息</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="branchCount">0</div>
+                        <div class="stat-label">分支总数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="wordCount">0</div>
+                        <div class="stat-label">字数</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI 模型选择 -->
+            <div class="sidebar-section">
+                <div class="sidebar-title"><i class="fas fa-brain"></i> AI 模型</div>
+                <select id="modelSelect">
+                    <option value="openai">OpenAI GPT-4</option>
+                    <option value="anthropic">Claude 3</option>
+                    <option value="local">本地 LLM</option>
+                </select>
+                <div style="margin-top: 10px; font-size: 0.8em; color: #999;">
+                    提示：需在设置中配置 API 密钥
+                </div>
+            </div>
+
+            <!-- 搜索功能 -->
+            <div class="sidebar-section">
+                <div class="sidebar-title"><i class="fas fa-search"></i> 搜索</div>
+                <div class="input-group">
+                    <input type="text" id="searchInput" placeholder="搜索分支...">
+                    <button class="btn btn-primary btn-sm" onclick="searchBranches()"><i class="fas fa-check"></i></button>
+                </div>
+            </div>
+
+            <!-- 分支树 -->
+            <div class="sidebar-section">
+                <div class="sidebar-title"><i class="fas fa-code-branch"></i> 分支树</div>
+                <div id="branchesTree"></div>
+            </div>
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div id="content">
+            <div class="content-header">
+                <h2 id="chapterTitle">📄 章节内容</h2>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn btn-secondary btn-sm" onclick="undoAction()" title="撤销 (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+                    <button class="btn btn-secondary btn-sm" onclick="redoAction()" title="重做 (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+
+            <!-- 选项卡 -->
+            <div class="content-tabs">
+                <button class="tab active" onclick="switchTab('story')"><i class="fas fa-book"></i> 故事</button>
+                <button class="tab" onclick="switchTab('summary')"><i class="fas fa-list"></i> 大纲</button>
+                <button class="tab" onclick="switchTab('export')"><i class="fas fa-download"></i> 导出</button>
+            </div>
+
+            <!-- 故事显示 -->
+            <div id="story-tab" class="content-tab active">
+                <div id="story">点击左侧分支开始编辑或在下方输入新选择...</div>
+            </div>
+
+            <!-- 大纲视图 -->
+            <div id="summary-tab" class="content-tab">
+                <div id="storyOutline" style="flex: 1; overflow-y: auto; padding: 20px;">
+                    <h3>故事大纲</h3>
+                    <div id="outlineContent"></div>
+                </div>
+            </div>
+
+            <!-- 导出选项 -->
+            <div id="export-tab" class="content-tab">
+                <div style="padding: 20px;">
+                    <h3 style="margin-bottom: 15px;">导出选项</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                        <button class="btn btn-primary" onclick="exportHTML()"><i class="fas fa-file-html5"></i> HTML</button>
+                        <button class="btn btn-primary" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                        <button class="btn btn-primary" onclick="exportJSON()"><i class="fas fa-file-code"></i> JSON</button>
+                        <button class="btn btn-primary" onclick="exportMarkdown()"><i class="fas fa-file-alt"></i> Markdown</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 加载动画 -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <span>AI 正在生成内容...</span>
+            </div>
+
+            <!-- 控制栏 -->
+            <div id="controls">
+                <input type="text" id="userChoice" class="input-field" placeholder="输入你的剧情选择..." value="">
+                <button class="btn btn-primary" onclick="addBranch()"><i class="fas fa-plus"></i> 提交选择</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：快捷键 -->
+    <div id="shortcutsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">⌨️ 快捷键</div>
+            <div class="modal-body">
+                <div class="shortcuts-info">
+                    <div class="shortcut-item">
+                        <span>提交选择</span>
+                        <span class="shortcut-key">Enter</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>撤销</span>
+                        <span class="shortcut-key">Ctrl+Z</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>重做</span>
+                        <span class="shortcut-key">Ctrl+Y</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>搜索</span>
+                        <span class="shortcut-key">Ctrl+F</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>导出 HTML</span>
+                        <span class="shortcut-key">Ctrl+E</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>清除所有</span>
+                        <span class="shortcut-key">Ctrl+Shift+D</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('shortcuts')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：历史记录 -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">📜 版本历史</div>
+            <div class="modal-body">
+                <div class="history-list" id="historyList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger btn-sm" onclick="clearHistory()"><i class="fas fa-trash"></i> 清除历史</button>
+                <button class="btn btn-secondary" onclick="closeModal('history')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知容器 -->
+    <div id="notificationContainer"></div>
+
+    <script>
+        // ==================== 核心数据管理 ====================
+        
+        class NovelManager {
+            constructor() {
+                this.novel = this.loadNovel();
+                this.history = this.loadHistory();
+                this.historyIndex = this.history.length - 1;
+                this.saveAutoInterval = setInterval(() => this.autoSave(), 30000);
+            }
+
+            loadNovel() {
+                const saved = localStorage.getItem("novel");
+                return saved ? JSON.parse(saved) : {
+                    title: "星际探险",
+                    chapters: [],
+                    currentContext: "",
+                    branchCount: 0,
+                    currentBranches: [],
+                    createdAt: new Date().toISOString()
+                };
+            }
+
+            loadHistory() {
+                const saved = localStorage.getItem("novelHistory");
+                return saved ? JSON.parse(saved) : [this.novel];
+            }
+
+            save() {
+                localStorage.setItem("novel", JSON.stringify(this.novel));
+                const historySnapshot = JSON.parse(JSON.stringify(this.novel));
+                this.history = this.history.slice(0, this.historyIndex + 1);
+                this.history.push(historySnapshot);
+                this.historyIndex = this.history.length - 1;
+                localStorage.setItem("novelHistory", JSON.stringify(this.history));
+                this.showNotification("自动保存成功", "success");
+            }
+
+            autoSave() {
+                localStorage.setItem("novel", JSON.stringify(this.novel));
+            }
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.novel = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.showNotification("已撤销", "info");
+                    return true;
+                }
+                return false;
+            }
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.novel = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.showNotification("已重做", "info");
+                    return true;
+                }
+                return false;
+            }
+
+            showNotification(msg, type) {
+                const container = document.getElementById("notificationContainer");
+                const notification = document.createElement("div");
+                notification.className = `notification ${type}`;
+                notification.innerHTML = `
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                    <span>${msg}</span>
+                `;
+                container.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
+            }
+
+            getStats() {
+                return {
+                    branchCount: this.novel.branchCount,
+                    wordCount: this.novel.currentContext.length,
+                    chapterCount: this.novel.chapters.length
+                };
+            }
+        }
+
+        const manager = new NovelManager();
+
+        // ==================== UI 更新函数 ====================
+
+        function showStory() {
+            document.getElementById("story").innerText = manager.novel.currentContext || "还没有故事内容...";
+            document.getElementById("novelTitle").value = manager.novel.title;
+            updateStats();
+            renderBranchesTree();
+        }
+
+        function updateStats() {
+            const stats = manager.getStats();
+            document.getElementById("branchCount").innerText = stats.branchCount;
+            document.getElementById("wordCount").innerText = stats.wordCount;
+        }
+
+        function renderBranchesTree() {
+            const container = document.getElementById("branchesTree");
+            container.innerHTML = "";
+
+            const renderBranchList = (branchList, parentEl) => {
+                const ul = document.createElement("ul");
+                branchList.forEach(branch => {
+                    const li = document.createElement("li");
+                    const branchItem = document.createElement("div");
+                    branchItem.className = "branch-item";
+
+                    const toggle = document.createElement("span");
+                    toggle.className = "toggle-btn";
+                    toggle.innerText = branch.children.length > 0 ? "▼" : "";
+                    toggle.onclick = (e) => {
+                        e.stopPropagation();
+                        const childUl = li.querySelector("ul");
+                        if (childUl) {
+                            childUl.style.display = childUl.style.display === "none" ? "block" : "none";
+                        }
+                    };
+
+                    const span = document.createElement("span");
+                    span.className = "branch";
+                    span.innerHTML = `<span class="branch-text">分支 ${branch.id}: ${branch.choice.substring(0, 20)}${branch.choice.length > 20 ? '...' : ''}</span>`;
+                    span.onclick = () => chooseBranch(branch.id);
+
+                    const actions = document.createElement("div");
+                    actions.className = "branch-actions";
+                    actions.innerHTML = `
+                        <button class="btn btn-secondary btn-sm" onclick="editBranch(${branch.id})" title="编辑"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteBranch(${branch.id})" title="删除"><i class="fas fa-trash"></i></button>
+                    `;
+
+                    branchItem.appendChild(toggle);
+                    branchItem.appendChild(span);
+                    branchItem.appendChild(actions);
+                    li.appendChild(branchItem);
+
+                    if (branch.children && branch.children.length > 0) {
+                        renderBranchList(branch.children, li);
+                    }
+                    ul.appendChild(li);
+                });
+                parentEl.appendChild(ul);
+                new Sortable(ul, {
+                    group: "nested",
+                    animation: 150,
+                    fallbackOnBody: true,
+                    swapThreshold: 0.65
+                });
+            };
+
+            renderBranchList(manager.novel.currentBranches, container);
+        }
+
+        function updateOutline() {
+            const outlineContent = document.getElementById("outlineContent");
+            const renderOutline = (branches, depth = 0) => {
+                let html = "<ul>";
+                branches.forEach(branch => {
+                    html += `<li style="margin-left: ${depth * 20}px;">
+                        <strong>分支 ${branch.id}:</strong> ${branch.choice}
+                        <small style="display: block; color: #999; margin-top: 4px;">
+                            📝 ${branch.text.substring(0, 100)}...
+                        </small>`;
+                    if (branch.children.length > 0) {
+                        html += renderOutline(branch.children, depth + 1);
+                    }
+                    html += "</li>";
+                });
+                html += "</ul>";
+                return html;
+            };
+            outlineContent.innerHTML = renderOutline(manager.novel.currentBranches);
+        }
+
+        // ==================== AI 调用 ====================
+
+        async function callAI(prompt, model) {
+            const apiKey = localStorage.getItem(`${model}_apiKey`);
+            
+            if (!apiKey) {
+                manager.showNotification(`请先配置 ${model} API 密钥`, "error");
+                return `[${model} 响应] ${prompt}`;
+            }
+
+            document.getElementById("loading").style.display = "flex";
+
+            try {
+                let response;
+                if (model === "openai") {
+                    response = await fetch("https://api.openai.com/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${apiKey}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            model: "gpt-3.5-turbo",
+                            messages: [{ role: "user", content: prompt }],
+                            max_tokens: 300
+                        })
+                    });
+                    const data = await response.json();
+                    return data.choices[0].message.content;
+                } else {
+                    // 本地模拟 AI 响应
+                    await new Promise(r => setTimeout(r, 1000));
+                    return `[${model}] ${prompt} 的故事继续...`;
+                }
+            } catch (error) {
+                manager.showNotification("AI 生成失败: " + error.message, "error");
+                return `[${model}] ${prompt}`;
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
+        }
+
+        // ==================== 分支操作 ====================
+
+        async function addBranch() {
+            const input = document.getElementById("userChoice").value.trim();
+            if (!input) {
+                manager.showNotification("请输入选择！", "error");
+                return;
+            }
+
+            document.getElementById("userChoice").value = "";
+            manager.novel.branchCount++;
+
+            const branch = {
+                id: manager.novel.branchCount,
+                choice: input,
+                text: "",
+                continuation: "",
+                children: [],
+                tags: [],
+                createdAt: new Date().toISOString()
+            };
+
+            const model = document.getElementById("modelSelect").value;
+            branch.text = await callAI(`章节内容: 玩家选择 "${input}"`, model);
+            branch.continuation = await callAI(`AI续写: 玩家选择 "${input}" 后发生`, model);
+
+            manager.novel.currentBranches.push(branch);
+            manager.novel.currentContext += branch.text + "\n\n" + branch.continuation + "\n\n---\n\n";
+            manager.novel.chapters.push(branch);
+            manager.save();
+            showStory();
+            updateOutline();
+            manager.showNotification("✅ 分支已添加", "success");
+        }
+
+        async function chooseBranch(id) {
+            const branch = findBranchById(id, manager.novel.currentBranches);
+            if (!branch) return;
+
+            const nextInput = prompt(`输入你想让分支 ${branch.id} 发展的剧情：`);
+            if (!nextInput) return;
+
+            manager.novel.branchCount++;
+            const model = document.getElementById("modelSelect").value;
+            const childBranch = {
+                id: manager.novel.branchCount,
+                choice: nextInput,
+                text: "",
+                continuation: "",
+                children: [],
+                tags: [],
+                createdAt: new Date().toISOString()
+            };
+
+            childBranch.text = await callAI(`章节内容: 玩家选择 "${nextInput}"`, model);
+            childBranch.continuation = await callAI(`AI续写: 玩家选择 "${nextInput}" 后发生`, model);
+
+            branch.children.push(childBranch);
+            manager.novel.currentBranches.push(childBranch);
+            manager.novel.currentContext += childBranch.text + "\n\n" + childBranch.continuation + "\n\n---\n\n";
+            manager.save();
+            showStory();
+            updateOutline();
+            manager.showNotification("✅ 子分支已添加", "success");
+        }
+
+        function editBranch(id) {
+            const branch = findBranchById(id, manager.novel.currentBranches);
+            if (!branch) return;
+
+            const newChoice = prompt("编辑选择内容:", branch.choice);
+            if (newChoice) {
+                branch.choice = newChoice;
+                manager.save();
+                showStory();
+                manager.showNotification("✅ 分支已更新", "success");
+            }
+        }
+
+        function deleteBranch(id) {
+            if (!confirm("确定要删除该分支及其所有子分支吗？")) return;
+
+            const deleteBranchRecursive = (branches) => {
+                for (let i = 0; i < branches.length; i++) {
+                    if (branches[i].id === id) {
+                        branches.splice(i, 1);
+                        return true;
+                    }
+                    if (deleteBranchRecursive(branches[i].children)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            deleteBranchRecursive(manager.novel.currentBranches);
+            manager.save();
+            showStory();
+            manager.showNotification("✅ 分支已删除", "success");
+        }
+
+        function findBranchById(id, list) {
+            for (const b of list) {
+                if (b.id === id) return b;
+                if (b.children) {
+                    const found = findBranchById(id, b.children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        // ==================== 导出函数 ====================
+
+        function exportHTML() {
+            const htmlContent = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>${manager.novel.title}</title>
+    <style>
+        body { font-family: Arial; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; text-align: center; }
+        .content { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); line-height: 1.8; }
+        .branch { margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 3px solid #667eea; }
+        .branch-title { font-weight: bold; color: #667eea; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>${manager.novel.title}</h1>
+    <div class="content">
+        ${manager.novel.currentContext.split('\n\n').map(para => 
+            `<p>${para.replace(/\n/g, '<br>')}</p>`
+        ).join('')}
+    </div>
+</body>
+</html>`;
+            downloadFile(htmlContent, `${manager.novel.title}.html`, "text/html");
+        }
+
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 10;
+
+            doc.setFontSize(16);
+            doc.text(manager.novel.title, 10, y);
+            y += 10;
+
+            doc.setFontSize(12);
+            const lines = doc.splitTextToSize(manager.novel.currentContext, 190);
+            lines.forEach(line => {
+                if (y > 270) {
+                    doc.addPage();
+                    y = 10;
+                }
+                doc.text(line, 10, y);
+                y += 5;
+            });
+
+            doc.save(`${manager.novel.title}.pdf`);
+            manager.showNotification("✅ PDF 已导出", "success");
+        }
+
+        function exportJSON() {
+            const json = JSON.stringify(manager.novel, null, 2);
+            downloadFile(json, `${manager.novel.title}.json`, "application/json");
+        }
+
+        function exportMarkdown() {
+            let markdown = `# ${manager.novel.title}\n\n`;
+            markdown += `**创建于:** ${new Date(manager.novel.createdAt).toLocaleString()}\n\n`;
+            markdown += `## 内容\n\n${manager.novel.currentContext}\n\n`;
+            markdown += `## 分支统计\n\n- 总分支数: ${manager.novel.branchCount}\n`;
+            markdown += `- 总字数: ${manager.novel.currentContext.length}\n`;
+
+            downloadFile(markdown, `${manager.novel.title}.md`, "text/markdown");
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            manager.showNotification(`✅ ${filename} 已导出`, "success");
+        }
+
+        // ==================== 搜索功能 ====================
+
+        function searchBranches() {
+            const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+            if (!keyword) {
+                manager.showNotification("请输入搜索关键词", "error");
+                return;
+            }
+
+            const searchInBranches = (branches) => {
+                for (const branch of branches) {
+                    if (branch.choice.toLowerCase().includes(keyword) ||
+                        branch.text.toLowerCase().includes(keyword)) {
+                        manager.showNotification(`找到分支 ${branch.id}: ${branch.choice}`, "success");
+                        return true;
+                    }
+                    if (searchInBranches(branch.children)) return true;
+                }
+                return false;
+            };
+
+            if (!searchInBranches(manager.novel.currentBranches)) {
+                manager.showNotification("未找到匹配的分支", "error");
+            }
+        }
+
+        // ==================== 撤销重做 ====================
+
+        function undoAction() {
+            if (manager.undo()) {
+                showStory();
+                updateOutline();
+            } else {
+                manager.showNotification("没有可撤销的操作", "error");
+            }
+        }
+
+        function redoAction() {
+            if (manager.redo()) {
+                showStory();
+                updateOutline();
+            } else {
+                manager.showNotification("没有可重做的操作", "error");
+            }
+        }
+
+        // ==================== UI 控制 ====================
+
+        function switchTab(tab) {
+            document.querySelectorAll(".content-tab").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+
+            document.getElementById(tab + "-tab").classList.add("active");
+            event.target.classList.add("active");
+
+            if (tab === "summary") {
+                updateOutline();
+            }
+        }
+
+        function openModal(type) {
+            const modal = document.getElementById(type + "Modal");
+            modal.classList.add("active");
+
+            if (type === "history") {
+                updateHistoryList();
+            }
+        }
+
+        function closeModal(type) {
+            const modal = document.getElementById(type + "Modal");
+            modal.classList.remove("active");
+        }
+
+        function updateHistoryList() {
+            const historyList = document.getElementById("historyList");
+            historyList.innerHTML = manager.history.map((item, index) => `
+                <div class="history-item" onclick="restoreFromHistory(${index})">
+                    <strong>版本 ${index + 1}</strong>
+                    <div class="history-time">${new Date(item.createdAt).toLocaleString()}</div>
+                    <small>分支数: ${item.branchCount}</small>
+                </div>
+            `).join("");
+        }
+
+        function restoreFromHistory(index) {
+            manager.historyIndex = index;
+            manager.novel = JSON.parse(JSON.stringify(manager.history[index]));
+            manager.save();
+            showStory();
+            closeModal("history");
+            manager.showNotification("✅ 已恢复到该版本", "success");
+        }
+
+        function clearHistory() {
+            if (confirm("确定要清除所有历史记录吗？")) {
+                manager.history = [manager.novel];
+                manager.historyIndex = 0;
+                localStorage.setItem("novelHistory", JSON.stringify(manager.history));
+                manager.showNotification("✅ 历史已清除", "success");
+            }
+        }
+
+        function showStats() {
+            const stats = manager.getStats();
+            alert(`📊 统计信息\n\n分支总数: ${stats.branchCount}\n总字数: ${stats.wordCount}\n章节数: ${stats.chapterCount}`);
+        }
+
+        // ==================== 快捷键 ====================
+
+        document.addEventListener("keydown", (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === "z") { e.preventDefault(); undoAction(); }
+                else if (e.key === "y") { e.preventDefault(); redoAction(); }
+                else if (e.key === "f") { e.preventDefault(); document.getElementById("searchInput").focus(); }
+                else if (e.key === "e") { e.preventDefault(); exportHTML(); }
+                else if (e.shiftKey && e.key === "D") { e.preventDefault(); clearNovel(); }
+            } else if (e.key === "Enter") {
+                if (document.activeElement.id === "userChoice") {
+                    e.preventDefault();
+                    addBranch();
+                }
+            }
+        });
+
+        function clearNovel() {
+            if (confirm("确定要清除所有数据吗？这将无法恢复！")) {
+                manager.novel = {
+                    title: "新小说",
+                    chapters: [],
+                    currentContext: "",
+                    branchCount: 0,
+                    currentBranches: [],
+                    createdAt: new Date().toISOString()
+                };
+                manager.history = [manager.novel];
+                manager.historyIndex = 0;
+                manager.save();
+                showStory();
+                manager.showNotification("✅ 数据已清除", "success");
+            }
+        }
+
+        // 标题改变时更新
+        document.getElementById("novelTitle").addEventListener("change", (e) => {
+            manager.novel.title = e.target.value;
+            manager.save();
+        });
+
+        // ==================== 初始化 ====================
+
+        window.addEventListener("load", () => {
+            showStory();
+            updateOutline();
+        });
+
+        // 关闭时保存
+        window.addEventListener("beforeunload", () => {
+            manager.autoSave();
+        });
+
+        // 点击模态框外部关闭
+        document.querySelectorAll(".modal").forEach(modal => {
+            modal.addEventListener("click", (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove("active");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
