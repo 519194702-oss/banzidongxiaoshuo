@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互动小说编辑器 v3.0 - 多用户版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #4CAF50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --light: #f5f7fa;
+            --dark: #2c3e50;
+            --border: #e1e8ed;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: var(--dark);
+        }
+
+        .app-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* 认证界面 */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        .auth-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 400px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-title {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            color: #999;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--dark);
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .auth-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .auth-btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .auth-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .auth-btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 2px solid var(--border);
+        }
+
+        .auth-btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .auth-toggle {
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .auth-toggle a {
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .auth-error {
+            background: #fee;
+            color: var(--danger);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            border-left: 4px solid var(--danger);
+        }
+
+        .auth-success {
+            background: #efe;
+            color: var(--success);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            border-left: 4px solid var(--success);
+        }
+
+        /* 主应用界面 */
+        .app-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            gap: 0;
+        }
+
+        .navbar {
+            background: white;
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary);
+            height: 60px;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .novel-input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 0.9em;
+            width: 200px;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: var(--light);
+            border-radius: 20px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.8em;
+        }
+
+        #tree {
+            width: 30%;
+            min-width: 250px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid var(--border);
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--light);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 3px solid var(--primary);
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        select, .input-group input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 0.9em;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        select:focus, .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        .input-group input {
+            flex: 1;
+            margin: 0;
+        }
+
+        #branchesTree {
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 15px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        .branch-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 5px;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .branch {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 5px;
+            background: #f9f9f9;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .branch:hover {
+            background: #f0f5ff;
+            border-left-color: var(--primary);
+            transform: translateX(2px);
+        }
+
+        .toggle-btn {
+            cursor: pointer;
+            width: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: var(--primary);
+            user-select: none;
+        }
+
+        .branch-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.9em;
+        }
+
+        .branch-actions {
+            display: none;
+            gap: 4px;
+        }
+
+        .branch-item:hover .branch-actions {
+            display: flex;
+        }
+
+        #content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .content-header h2 {
+            color: var(--dark);
+            font-size: 1.3em;
+        }
+
+        .content-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 0.95em;
+            color: #999;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+
+        #story {
+            flex: 1;
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid var(--border);
+            line-height: 1.6;
+        }
+
+        .content-tab {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .content-tab.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            color: var(--primary);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+            color: var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .project-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            padding: 20px 0;
+        }
+
+        .project-card {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: var(--dark);
+        }
+
+        .project-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .project-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        .project-meta {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        @media (max-width: 1024px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            #tree {
+                width: 100%;
+                border-right: none;
+                border-bottom: 2px solid var(--border);
+                max-height: 200px;
+            }
+
+            #content {
+                flex: 1;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--light);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- 认证界面 -->
+        <div id="authScreen" class="auth-container">
+            <div class="auth-box">
+                <div class="auth-title">📖 互动小说编辑器</div>
+                <div class="auth-subtitle">v3.0 多用户版</div>
+                
+                <div class="auth-error" id="authError"></div>
+                <div class="auth-success" id="authSuccess"></div>
+
+                <!-- 登录表单 -->
+                <div id="loginForm">
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="loginEmail" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="loginPassword" placeholder="Enter your password">
+                    </div>
+                    <div class="auth-buttons">
+                        <button class="auth-btn auth-btn-primary" onclick="handleLogin()">登录</button>
+                        <button class="auth-btn auth-btn-secondary" onclick="switchToRegister()">注册</button>
+                    </div>
+                    <div class="auth-toggle">
+                        没有账户? <a onclick="switchToRegister()">立即注册</a>
+                    </div>
+                </div>
+
+                <!-- 注册表单 -->
+                <div id="registerForm" style="display: none;">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="registerUsername" placeholder="Your username">
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="registerEmail" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="registerPassword" placeholder="Create a password">
+                    </div>
+                    <div class="form-group">
+                        <label>确认密码</label>
+                        <input type="password" id="registerPasswordConfirm" placeholder="Confirm password">
+                    </div>
+                    <div class="auth-buttons">
+                        <button class="auth-btn auth-btn-primary" onclick="handleRegister()">注册</button>
+                        <button class="auth-btn auth-btn-secondary" onclick="switchToLogin()">返回登录</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主应用界面 -->
+        <div id="appScreen" style="display: none; flex: 1; display: flex; flex-direction: column;">
+            <!-- 导航栏 -->
+            <div class="navbar">
+                <div class="navbar-left">
+                    <span class="navbar-title">📖 互动小说编辑器 v3.0</span>
+                    <input type="text" id="novelTitle" class="novel-input" placeholder="小说标题" value="星际探险">
+                </div>
+                <div class="navbar-right">
+                    <button class="btn btn-secondary btn-sm" onclick="openModal('projects')"><i class="fas fa-folder"></i> 我的项目</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openModal('shortcuts')"><i class="fas fa-keyboard"></i> 快捷键</button>
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">U</div>
+                        <span id="userName">User</span>
+                        <button class="btn btn-sm btn-danger" onclick="handleLogout()" title="登出"><i class="fas fa-sign-out-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主容器 -->
+            <div class="app-container">
+                <!-- 左侧边栏 -->
+                <div id="tree">
+                    <div class="sidebar-section">
+                        <div class="sidebar-title"><i class="fas fa-chart-pie"></i> 统计信息</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="branchCount">0</div>
+                                <div class="stat-label">分支总数</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="wordCount">0</div>
+                                <div class="stat-label">字数</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <div class="sidebar-title"><i class="fas fa-brain"></i> AI 模型</div>
+                        <select id="modelSelect">
+                            <option value="openai">OpenAI GPT-4</option>
+                            <option value="anthropic">Claude 3</option>
+                            <option value="local">本地 LLM</option>
+                        </select>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <div class="sidebar-title"><i class="fas fa-search"></i> 搜索</div>
+                        <div class="input-group">
+                            <input type="text" id="searchInput" placeholder="搜索分支...">
+                            <button class="btn btn-primary btn-sm" onclick="searchBranches()"><i class="fas fa-check"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <div class="sidebar-title"><i class="fas fa-code-branch"></i> 分支树</div>
+                        <div id="branchesTree"></div>
+                    </div>
+                </div>
+
+                <!-- 右侧内容区 -->
+                <div id="content">
+                    <div class="content-header">
+                        <h2 id="chapterTitle">📄 章节内容</h2>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-secondary btn-sm" onclick="undoAction()" title="撤销"><i class="fas fa-undo"></i></button>
+                            <button class="btn btn-secondary btn-sm" onclick="redoAction()" title="重做"><i class="fas fa-redo"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="content-tabs">
+                        <button class="tab active" onclick="switchTab('story')"><i class="fas fa-book"></i> 故事</button>
+                        <button class="tab" onclick="switchTab('summary')"><i class="fas fa-list"></i> 大纲</button>
+                        <button class="tab" onclick="switchTab('export')"><i class="fas fa-download"></i> 导出</button>
+                    </div>
+
+                    <div id="story-tab" class="content-tab active">
+                        <div id="story">点击左侧分支开始编辑或在下方输入新选择...</div>
+                    </div>
+
+                    <div id="summary-tab" class="content-tab">
+                        <div id="storyOutline" style="flex: 1; overflow-y: auto; padding: 20px;">
+                            <h3>故事大纲</h3>
+                            <div id="outlineContent"></div>
+                        </div>
+                    </div>
+
+                    <div id="export-tab" class="content-tab">
+                        <div style="padding: 20px;">
+                            <h3 style="margin-bottom: 15px;">导出选项</h3>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <button class="btn btn-primary" onclick="exportHTML()"><i class="fas fa-file-html5"></i> HTML</button>
+                                <button class="btn btn-primary" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                                <button class="btn btn-primary" onclick="exportJSON()"><i class="fas fa-file-code"></i> JSON</button>
+                                <button class="btn btn-primary" onclick="exportMarkdown()"><i class="fas fa-file-alt"></i> Markdown</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <span>AI 正在生成内容...</span>
+                    </div>
+
+                    <div id="controls">
+                        <input type="text" id="userChoice" class="input-field" placeholder="输入你的剧情选择..." value="">
+                        <button class="btn btn-primary" onclick="addBranch()"><i class="fas fa-plus"></i> 提交选择</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：我的项目 -->
+    <div id="projectsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">📁 我的项目</div>
+            <div class="modal-body">
+                <div class="project-list" id="projectsList"></div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="createNewProject()"><i class="fas fa-plus"></i> 创建新项目</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('projects')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：快捷键 -->
+    <div id="shortcutsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">⌨️ 快捷键</div>
+            <div class="modal-body">
+                <div style="background: var(--light); padding: 15px; border-radius: 8px;">
+                    <p><strong>Enter</strong> - 提交选择</p>
+                    <p><strong>Ctrl+Z</strong> - 撤销</p>
+                    <p><strong>Ctrl+Y</strong> - 重做</p>
+                    <p><strong>Ctrl+E</strong> - 导出 HTML</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('shortcuts')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notificationContainer"></div>
+
+    <script>
+        // ==================== 用户认证系统 ====================
+        
+        class AuthManager {
+            constructor() {
+                this.users = this.loadUsers();
+                this.currentUser = this.loadCurrentUser();
+                this.projects = this.loadProjects();
+            }
+
+            loadUsers() {
+                const saved = localStorage.getItem("users");
+                return saved ? JSON.parse(saved) : {};
+            }
+
+            loadCurrentUser() {
+                return localStorage.getItem("currentUser");
+            }
+
+            loadProjects() {
+                const saved = localStorage.getItem(`projects_${this.currentUser}`);
+                return saved ? JSON.parse(saved) : {};
+            }
+
+            register(username, email, password) {
+                if (this.users[email]) {
+                    return { success: false, message: "邮箱已被注册" };
+                }
+
+                if (password.length < 6) {
+                    return { success: false, message: "密码至少需要6个字符" };
+                }
+
+                this.users[email] = {
+                    username,
+                    email,
+                    password: this.hashPassword(password),
+                    createdAt: new Date().toISOString()
+                };
+
+                localStorage.setItem("users", JSON.stringify(this.users));
+                return { success: true, message: "注册成功！" };
+            }
+
+            login(email, password) {
+                const user = this.users[email];
+                if (!user) {
+                    return { success: false, message: "邮箱未注册" };
+                }
+
+                if (!this.verifyPassword(password, user.password)) {
+                    return { success: false, message: "密码错误" };
+                }
+
+                localStorage.setItem("currentUser", email);
+                this.currentUser = email;
+                this.projects = this.loadProjects();
+                return { success: true, message: "登录成功！", user };
+            }
+
+            logout() {
+                localStorage.removeItem("currentUser");
+                this.currentUser = null;
+                this.projects = {};
+            }
+
+            hashPassword(password) {
+                // 简单的哈希（生产环境应使用bcrypt等）
+                return btoa(password);
+            }
+
+            verifyPassword(password, hash) {
+                return btoa(password) === hash;
+            }
+
+            getCurrentUserName() {
+                if (!this.currentUser) return "User";
+                return this.users[this.currentUser]?.username || "User";
+            }
+
+            saveProject(projectId, novelData) {
+                if (!this.currentUser) return false;
+                
+                this.projects[projectId] = {
+                    ...novelData,
+                    updatedAt: new Date().toISOString()
+                };
+
+                localStorage.setItem(`projects_${this.currentUser}`, JSON.stringify(this.projects));
+                return true;
+            }
+
+            getProject(projectId) {
+                return this.projects[projectId];
+            }
+
+            getAllProjects() {
+                return Object.entries(this.projects).map(([id, data]) => ({
+                    id,
+                    ...data
+                }));
+            }
+
+            deleteProject(projectId) {
+                delete this.projects[projectId];
+                localStorage.setItem(`projects_${this.currentUser}`, JSON.stringify(this.projects));
+            }
+        }
+
+        const auth = new AuthManager();
+
+        // ==================== 核心数据管理 ====================
+        
+        class NovelManager {
+            constructor() {
+                this.currentProjectId = localStorage.getItem("currentProjectId") || "default";
+                this.novel = this.loadNovel();
+                this.history = this.loadHistory();
+                this.historyIndex = this.history.length - 1;
+            }
+
+            loadNovel() {
+                const project = auth.getProject(this.currentProjectId);
+                return project ? project : {
+                    title: "星际探险",
+                    chapters: [],
+                    currentContext: "",
+                    branchCount: 0,
+                    currentBranches: [],
+                    createdAt: new Date().toISOString()
+                };
+            }
+
+            loadHistory() {
+                const saved = localStorage.getItem(`history_${this.currentProjectId}`);
+                return saved ? JSON.parse(saved) : [this.novel];
+            }
+
+            save() {
+                auth.saveProject(this.currentProjectId, this.novel);
+                
+                const historySnapshot = JSON.parse(JSON.stringify(this.novel));
+                this.history = this.history.slice(0, this.historyIndex + 1);
+                this.history.push(historySnapshot);
+                this.historyIndex = this.history.length - 1;
+                localStorage.setItem(`history_${this.currentProjectId}`, JSON.stringify(this.history));
+                
+                this.showNotification("✅ 保存成功", "success");
+            }
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.novel = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.showNotification("已撤销", "success");
+                    return true;
+                }
+                return false;
+            }
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.novel = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+                    this.showNotification("已重做", "success");
+                    return true;
+                }
+                return false;
+            }
+
+            showNotification(msg, type) {
+                const container = document.getElementById("notificationContainer");
+                const notification = document.createElement("div");
+                notification.className = `notification ${type}`;
+                notification.innerHTML = `<span>${msg}</span>`;
+                container.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
+            }
+
+            getStats() {
+                return {
+                    branchCount: this.novel.branchCount,
+                    wordCount: this.novel.currentContext.length,
+                    chapterCount: this.novel.chapters.length
+                };
+            }
+        }
+
+        let manager = null;
+
+        // ==================== UI 函数 ====================
+
+        function switchToRegister() {
+            document.getElementById("loginForm").style.display = "none";
+            document.getElementById("registerForm").style.display = "block";
+            clearAuthMessages();
+        }
+
+        function switchToLogin() {
+            document.getElementById("loginForm").style.display = "block";
+            document.getElementById("registerForm").style.display = "none";
+            clearAuthMessages();
+        }
+
+        function clearAuthMessages() {
+            document.getElementById("authError").style.display = "none";
+            document.getElementById("authSuccess").style.display = "none";
+        }
+
+        function handleRegister() {
+            const username = document.getElementById("registerUsername").value.trim();
+            const email = document.getElementById("registerEmail").value.trim();
+            const password = document.getElementById("registerPassword").value;
+            const confirmPassword = document.getElementById("registerPasswordConfirm").value;
+
+            if (!username || !email || !password) {
+                showAuthError("请填写所有字段");
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showAuthError("两次密码不一致");
+                return;
+            }
+
+            const result = auth.register(username, email, password);
+            if (result.success) {
+                showAuthSuccess("注册成功！请登录");
+                setTimeout(() => switchToLogin(), 1500);
+            } else {
+                showAuthError(result.message);
+            }
+        }
+
+        function handleLogin() {
+            const email = document.getElementById("loginEmail").value.trim();
+            const password = document.getElementById("loginPassword").value;
+
+            if (!email || !password) {
+                showAuthError("请输入邮箱和密码");
+                return;
+            }
+
+            const result = auth.login(email, password);
+            if (result.success) {
+                showAuthSuccess("登录成功！");
+                setTimeout(() => initializeApp(), 1500);
+            } else {
+                showAuthError(result.message);
+            }
+        }
+
+        function handleLogout() {
+            if (confirm("确定要退出登录吗？")) {
+                auth.logout();
+                document.getElementById("authScreen").style.display = "flex";
+                document.getElementById("appScreen").style.display = "none";
+                document.getElementById("loginForm").style.display = "block";
+                document.getElementById("registerForm").style.display = "none";
+                clearAuthMessages();
+                // 清空输入框
+                document.getElementById("loginEmail").value = "";
+                document.getElementById("loginPassword").value = "";
+            }
+        }
+
+        function showAuthError(message) {
+            const errorEl = document.getElementById("authError");
+            errorEl.textContent = "❌ " + message;
+            errorEl.style.display = "block";
+        }
+
+        function showAuthSuccess(message) {
+            const successEl = document.getElementById("authSuccess");
+            successEl.textContent = "✅ " + message;
+            successEl.style.display = "block";
+        }
+
+        function initializeApp() {
+            manager = new NovelManager();
+            
+            document.getElementById("authScreen").style.display = "none";
+            document.getElementById("appScreen").style.display = "flex";
+            
+            const user = auth.users[auth.currentUser];
+            document.getElementById("userName").textContent = user.username;
+            document.getElementById("userAvatar").textContent = user.username[0].toUpperCase();
+            
+            showStory();
+            updateOutline();
+            updateProjectsList();
+        }
+
+        function showStory() {
+            if (!manager) return;
+            document.getElementById("story").innerText = manager.novel.currentContext || "点击左侧分支开始编辑或在下方输入新选择...";
+            document.getElementById("novelTitle").value = manager.novel.title;
+            updateStats();
+            renderBranchesTree();
+        }
+
+        function updateStats() {
+            if (!manager) return;
+            const stats = manager.getStats();
+            document.getElementById("branchCount").innerText = stats.branchCount;
+            document.getElementById("wordCount").innerText = stats.wordCount;
+        }
+
+        function renderBranchesTree() {
+            if (!manager) return;
+            const container = document.getElementById("branchesTree");
+            container.innerHTML = "";
+
+            const renderBranchList = (branchList, parentEl) => {
+                const ul = document.createElement("ul");
+                branchList.forEach(branch => {
+                    const li = document.createElement("li");
+                    const branchItem = document.createElement("div");
+                    branchItem.className = "branch-item";
+
+                    const toggle = document.createElement("span");
+                    toggle.className = "toggle-btn";
+                    toggle.innerText = branch.children.length > 0 ? "▼" : "";
+                    toggle.onclick = (e) => {
+                        e.stopPropagation();
+                        const childUl = li.querySelector("ul");
+                        if (childUl) {
+                            childUl.style.display = childUl.style.display === "none" ? "block" : "none";
+                        }
+                    };
+
+                    const span = document.createElement("span");
+                    span.className = "branch";
+                    span.innerHTML = `<span class="branch-text">分支 ${branch.id}: ${branch.choice.substring(0, 20)}</span>`;
+                    span.onclick = () => chooseBranch(branch.id);
+
+                    const actions = document.createElement("div");
+                    actions.className = "branch-actions";
+                    actions.innerHTML = `
+                        <button class="btn btn-secondary btn-sm" onclick="editBranch(${branch.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteBranch(${branch.id})"><i class="fas fa-trash"></i></button>
+                    `;
+
+                    branchItem.appendChild(toggle);
+                    branchItem.appendChild(span);
+                    branchItem.appendChild(actions);
+                    li.appendChild(branchItem);
+
+                    if (branch.children && branch.children.length > 0) {
+                        renderBranchList(branch.children, li);
+                    }
+                    ul.appendChild(li);
+                });
+                parentEl.appendChild(ul);
+                new Sortable(ul, { group: "nested", animation: 150 });
+            };
+
+            renderBranchList(manager.novel.currentBranches, container);
+        }
+
+        function updateOutline() {
+            if (!manager) return;
+            const outlineContent = document.getElementById("outlineContent");
+            const renderOutline = (branches, depth = 0) => {
+                let html = "<ul>";
+                branches.forEach(branch => {
+                    html += `<li style="margin-left: ${depth * 20}px;"><strong>分支 ${branch.id}:</strong> ${branch.choice}</li>`;
+                    if (branch.children.length > 0) html += renderOutline(branch.children, depth + 1);
+                });
+                html += "</ul>";
+                return html;
+            };
+            outlineContent.innerHTML = renderOutline(manager.novel.currentBranches);
+        }
+
+        async function callAI(prompt, model) {
+            const apiKey = localStorage.getItem(`${model}_apiKey`);
+            
+            if (!apiKey) {
+                manager.showNotification(`请先配置 ${model} API 密钥`, "error");
+                return `[${model}] ${prompt}`;
+            }
+
+            document.getElementById("loading").style.display = "flex";
+            try {
+                await new Promise(r => setTimeout(r, 1000));
+                return `[${model}] ${prompt} 的故事继续...`;
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
+        }
+
+        async function addBranch() {
+            if (!manager) return;
+            const input = document.getElementById("userChoice").value.trim();
+            if (!input) {
+                manager.showNotification("请输入选择！", "error");
+                return;
+            }
+
+            document.getElementById("userChoice").value = "";
+            manager.novel.branchCount++;
+
+            const branch = {
+                id: manager.novel.branchCount,
+                choice: input,
+                text: "",
+                continuation: "",
+                children: [],
+                createdAt: new Date().toISOString()
+            };
+
+            const model = document.getElementById("modelSelect").value;
+            branch.text = await callAI(`章节内容: ${input}`, model);
+            branch.continuation = await callAI(`AI续写: ${input} 后发生`, model);
+
+            manager.novel.currentBranches.push(branch);
+            manager.novel.currentContext += branch.text + "\n\n" + branch.continuation + "\n\n---\n\n";
+            manager.novel.chapters.push(branch);
+            manager.save();
+            showStory();
+            updateOutline();
+            manager.showNotification("✅ 分支已添加", "success");
+        }
+
+        async function chooseBranch(id) {
+            if (!manager) return;
+            const findBranch = (branches, id) => {
+                for (const b of branches) {
+                    if (b.id === id) return b;
+                    const found = findBranch(b.children, id);
+                    if (found) return found;
+                }
+                return null;
+            };
+
+            const branch = findBranch(manager.novel.currentBranches, id);
+            if (!branch) return;
+
+            const nextInput = prompt(`输入你想让分支 ${branch.id} 发展的剧情：`);
+            if (!nextInput) return;
+
+            manager.novel.branchCount++;
+            const model = document.getElementById("modelSelect").value;
+            const childBranch = {
+                id: manager.novel.branchCount,
+                choice: nextInput,
+                text: "",
+                continuation: "",
+                children: [],
+                createdAt: new Date().toISOString()
+            };
+
+            childBranch.text = await callAI(`章节内容: ${nextInput}`, model);
+            childBranch.continuation = await callAI(`AI续写: ${nextInput} 后发生`, model);
+
+            branch.children.push(childBranch);
+            manager.novel.currentBranches.push(childBranch);
+            manager.novel.currentContext += childBranch.text + "\n\n" + childBranch.continuation + "\n\n---\n\n";
+            manager.save();
+            showStory();
+            updateOutline();
+        }
+
+        function editBranch(id) {
+            if (!manager) return;
+            const findBranch = (branches, id) => {
+                for (const b of branches) {
+                    if (b.id === id) return b;
+                    const found = findBranch(b.children, id);
+                    if (found) return found;
+                }
+                return null;
+            };
+
+            const branch = findBranch(manager.novel.currentBranches, id);
+            if (!branch) return;
+
+            const newChoice = prompt("编辑选择内容:", branch.choice);
+            if (newChoice) {
+                branch.choice = newChoice;
+                manager.save();
+                showStory();
+            }
+        }
+
+        function deleteBranch(id) {
+            if (!manager) return;
+            if (!confirm("确定要删除该分支吗？")) return;
+
+            const deleteBranchRecursive = (branches) => {
+                for (let i = 0; i < branches.length; i++) {
+                    if (branches[i].id === id) {
+                        branches.splice(i, 1);
+                        return true;
+                    }
+                    if (deleteBranchRecursive(branches[i].children)) return true;
+                }
+                return false;
+            };
+
+            deleteBranchRecursive(manager.novel.currentBranches);
+            manager.save();
+            showStory();
+        }
+
+        function exportHTML() {
+            if (!manager) return;
+            const htmlContent = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>${manager.novel.title}</title></head>
+<body><h1>${manager.novel.title}</h1><div>${manager.novel.currentContext.replace(/\n\n/g, '</p><p>')}</div></body>
+</html>`;
+            downloadFile(htmlContent, `${manager.novel.title}.html`, "text/html");
+        }
+
+        function exportPDF() {
+            if (!manager) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 10;
+            doc.setFontSize(16);
+            doc.text(manager.novel.title, 10, y);
+            y += 10;
+            doc.setFontSize(12);
+            const lines = doc.splitTextToSize(manager.novel.currentContext, 190);
+            lines.forEach(line => {
+                if (y > 270) { doc.addPage(); y = 10; }
+                doc.text(line, 10, y);
+                y += 5;
+            });
+            doc.save(`${manager.novel.title}.pdf`);
+            manager.showNotification("✅ PDF 已导出", "success");
+        }
+
+        function exportJSON() {
+            if (!manager) return;
+            const json = JSON.stringify(manager.novel, null, 2);
+            downloadFile(json, `${manager.novel.title}.json`, "application/json");
+        }
+
+        function exportMarkdown() {
+            if (!manager) return;
+            let markdown = `# ${manager.novel.title}\n\n${manager.novel.currentContext}`;
+            downloadFile(markdown, `${manager.novel.title}.md`, "text/markdown");
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            if (manager) manager.showNotification(`✅ ${filename} 已导出`, "success");
+        }
+
+        function searchBranches() {
+            if (!manager) return;
+            const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+            if (!keyword) return;
+
+            const searchInBranches = (branches) => {
+                for (const branch of branches) {
+                    if (branch.choice.toLowerCase().includes(keyword)) {
+                        manager.showNotification(`找到分支 ${branch.id}: ${branch.choice}`, "success");
+                        return true;
+                    }
+                    if (searchInBranches(branch.children)) return true;
+                }
+                return false;
+            };
+
+            if (!searchInBranches(manager.novel.currentBranches)) {
+                manager.showNotification("未找到分支", "error");
+            }
+        }
+
+        function undoAction() {
+            if (manager && manager.undo()) {
+                showStory();
+                updateOutline();
+            }
+        }
+
+        function redoAction() {
+            if (manager && manager.redo()) {
+                showStory();
+                updateOutline();
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll(".content-tab").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+            document.getElementById(tab + "-tab").classList.add("active");
+            event.target.classList.add("active");
+            if (tab === "summary") updateOutline();
+        }
+
+        function openModal(type) {
+            document.getElementById(type + "Modal").classList.add("active");
+            if (type === "projects") updateProjectsList();
+        }
+
+        function closeModal(type) {
+            document.getElementById(type + "Modal").classList.remove("active");
+        }
+
+        function updateProjectsList() {
+            const projectsList = document.getElementById("projectsList");
+            const projects = auth.getAllProjects();
+            projectsList.innerHTML = projects.map(p => `
+                <div class="project-card" onclick="loadProject('${p.id}')">
+                    <div class="project-title">${p.title}</div>
+                    <div class="project-meta">分支: ${p.branchCount} | 字数: ${p.currentContext.length}</div>
+                </div>
+            `).join("");
+        }
+
+        function createNewProject() {
+            const title = prompt("请输入新项目名称:");
+            if (!title) return;
+            
+            const projectId = "project_" + Date.now();
+            const newProject = {
+                title,
+                chapters: [],
+                currentContext: "",
+                branchCount: 0,
+                currentBranches: [],
+                createdAt: new Date().toISOString()
+            };
+            
+            auth.saveProject(projectId, newProject);
+            loadProject(projectId);
+            closeModal("projects");
+        }
+
+        function loadProject(projectId) {
+            manager.currentProjectId = projectId;
+            localStorage.setItem("currentProjectId", projectId);
+            manager.novel = manager.loadNovel();
+            manager.history = manager.loadHistory();
+            manager.historyIndex = manager.history.length - 1;
+            showStory();
+            updateOutline();
+            closeModal("projects");
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === "z") { e.preventDefault(); undoAction(); }
+                else if (e.key === "y") { e.preventDefault(); redoAction(); }
+                else if (e.key === "e") { e.preventDefault(); exportHTML(); }
+            } else if (e.key === "Enter" && document.activeElement.id === "userChoice") {
+                e.preventDefault();
+                addBranch();
+            }
+        });
+
+        document.querySelectorAll(".modal").forEach(modal => {
+            modal.addEventListener("click", (e) => {
+                if (e.target === modal) modal.classList.remove("active");
+            });
+        });
+
+        document.getElementById("novelTitle").addEventListener("change", (e) => {
+            if (manager) {
+                manager.novel.title = e.target.value;
+                manager.save();
+            }
+        });
+
+        // 检查是否已登录
+        window.addEventListener("load", () => {
+            if (auth.currentUser) {
+                initializeApp();
+            } else {
+                document.getElementById("authScreen").style.display = "flex";
+                document.getElementById("appScreen").style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>
